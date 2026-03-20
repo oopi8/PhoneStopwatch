@@ -26,13 +26,13 @@ class StopwatchService : Service() {
         private const val TAG = "PhoneStopwatch"
         private const val CHANNEL_ID = "stopwatch_channel"
         private const val NOTIFICATION_ID = 1
-        private const val TICK_MS = 10_000L
+        private const val TICK_MS = 5_000L
 
         // Xiaomi 13: punch-hole camera at top-center, ~12dp diameter
         // Overlay sits to the right of camera hole
         private const val CAMERA_RIGHT_OFFSET_DP = 22f  // dp right of screen center
         private const val TEXT_SIZE_SP = 12f
-        private const val Y_OFFSET_DP = -4f  // shift upward
+        private const val Y_OFFSET_DP = -30f  // shift upward
     }
 
     private lateinit var windowManager: WindowManager

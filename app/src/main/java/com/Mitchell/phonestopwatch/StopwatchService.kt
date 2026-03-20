@@ -33,7 +33,7 @@ class StopwatchService : Service() {
 
         private const val CAMERA_RIGHT_OFFSET_DP = 22f
         private const val TEXT_SIZE_SP = 14f
-        private const val Y_OFFSET_DP = -300f
+        private const val Y_OFFSET_DP = 0f  // unused, y is computed directly
     }
 
     // Custom View: white fill + black stroke outline
@@ -156,12 +156,11 @@ class StopwatchService : Service() {
         val textSizePx = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_SP, TEXT_SIZE_SP, metrics
         ).toInt()
-        val yOffsetPx = TypedValue.applyDimension(
-            TypedValue.COMPLEX_UNIT_DIP, Y_OFFSET_DP, metrics
-        ).toInt()
 
+        // y=0 is bottom of status bar; use negative value to enter status bar area
+        // target: vertically centered in status bar
         val finalX = screenWidth / 2 + offsetPx
-        val finalY = statusBarHeight / 2 - textSizePx / 2 + yOffsetPx
+        val finalY = -(statusBarHeight / 2 + textSizePx / 2)
         Log.d(TAG, "Overlay params: x=$finalX y=$finalY statusBar=$statusBarHeight screenWidth=$screenWidth density=${metrics.density}")
 
         return WindowManager.LayoutParams(
@@ -170,7 +169,6 @@ class StopwatchService : Service() {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                     WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
         ).apply {

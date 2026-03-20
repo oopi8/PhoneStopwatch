@@ -26,12 +26,13 @@ class StopwatchService : Service() {
         private const val TAG = "PhoneStopwatch"
         private const val CHANNEL_ID = "stopwatch_channel"
         private const val NOTIFICATION_ID = 1
-        private const val TICK_MS = 60_000L
+        private const val TICK_MS = 10_000L
 
         // Xiaomi 13: punch-hole camera at top-center, ~12dp diameter
         // Overlay sits to the right of camera hole
         private const val CAMERA_RIGHT_OFFSET_DP = 22f  // dp right of screen center
         private const val TEXT_SIZE_SP = 12f
+        private const val Y_OFFSET_DP = -4f  // shift upward
     }
 
     private lateinit var windowManager: WindowManager
@@ -52,7 +53,7 @@ class StopwatchService : Service() {
 
     private val tickRunnable = object : Runnable {
         override fun run() {
-            updateMinutes()
+            updateDisplay()
             handler.postDelayed(this, TICK_MS)
         }
     }
@@ -89,7 +90,7 @@ class StopwatchService : Service() {
         showOverlay()
         handler.removeCallbacks(tickRunnable)
         handler.postDelayed(tickRunnable, TICK_MS)
-        updateMinutes()
+        updateDisplay()
     }
 
     private fun onScreenOff() {
@@ -103,10 +104,9 @@ class StopwatchService : Service() {
 
     private fun createOverlayView() {
         overlayView = TextView(this).apply {
-            text = "0"
+            text = "0:00"
             setTextColor(Color.WHITE)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, TEXT_SIZE_SP)
-            // Subtle shadow so digit is readable on any wallpaper
             setShadowLayer(3f, 0f, 1f, Color.BLACK)
         }
     }
@@ -135,7 +135,10 @@ class StopwatchService : Service() {
         ).apply {
             gravity = Gravity.TOP or Gravity.START
             x = screenWidth / 2 + offsetPx
-            y = statusBarHeight / 2 - textSizePx / 2
+            val yOffsetPx = TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, Y_OFFSET_DP, metrics
+            ).toInt()
+            y = statusBarHeight / 2 - textSizePx / 2 + yOffsetPx
         }
     }
 
@@ -166,11 +169,14 @@ class StopwatchService : Service() {
         overlayView = null
     }
 
-    private fun updateMinutes() {
+    private fun updateDisplay() {
         if (unlockTime == 0L) return
-        val elapsed = (System.currentTimeMillis() - unlockTime) / 60_000L
-        overlayView?.text = elapsed.toString()
-        Log.d(TAG, "Minutes: $elapsed")
+        val elapsedSec = (System.currentTimeMillis() - unlockTime) / 1_000L
+        val minutes = elapsedSec / 60
+        val seconds = elapsedSec % 60
+        val text = "%d:%02d".format(minutes, seconds)
+        overlayView?.text = text
+        Log.d(TAG, "Time: $text")
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

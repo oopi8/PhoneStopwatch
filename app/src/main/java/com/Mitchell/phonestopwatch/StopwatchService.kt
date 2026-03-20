@@ -33,7 +33,7 @@ class StopwatchService : Service() {
 
         private const val CAMERA_RIGHT_OFFSET_DP = 22f
         private const val TEXT_SIZE_SP = 14f
-        private const val Y_OFFSET_DP = 0f
+        private const val Y_OFFSET_DP = -100f
     }
 
     // Custom View: white fill + black stroke outline

@@ -13,6 +13,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.PixelFormat
 import android.graphics.Typeface
+import android.content.res.Configuration
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -116,6 +117,14 @@ class StopwatchService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (isShowing) {
+            windowManager.updateViewLayout(timerView, buildOverlayParams())
+            Log.d(TAG, "Config changed, overlay repositioned")
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         unregisterReceiver(screenReceiver)
@@ -157,10 +166,18 @@ class StopwatchService : Service() {
             TypedValue.COMPLEX_UNIT_SP, TEXT_SIZE_SP, metrics
         ).toInt()
 
-        // y=0 is bottom of status bar; use negative value to enter status bar area
-        // target: vertically centered in status bar
-        val finalX = screenWidth / 2 + offsetPx
-        val finalY = 500  // test: move down 500px
+        val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        val finalX: Int
+        val finalY: Int
+        if (isLandscape) {
+            // fullscreen video: status bar hidden, position top-right corner within screen
+            finalX = screenWidth - offsetPx * 3
+            finalY = textSizePx / 2
+        } else {
+            // portrait: enter status bar area with negative Y
+            finalX = screenWidth / 2 + offsetPx
+            finalY = -(statusBarHeight - textSizePx) / 2 - 60
+        }
         Log.d(TAG, "Overlay params: x=$finalX y=$finalY statusBar=$statusBarHeight screenWidth=$screenWidth density=${metrics.density}")
 
         return WindowManager.LayoutParams(

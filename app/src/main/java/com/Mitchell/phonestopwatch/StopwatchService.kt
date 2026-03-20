@@ -8,16 +8,19 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
 import android.graphics.PixelFormat
+import android.graphics.Typeface
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.View
 import android.view.WindowManager
-import android.widget.TextView
 import androidx.core.app.NotificationCompat
 
 class StopwatchService : Service() {
@@ -28,15 +31,54 @@ class StopwatchService : Service() {
         private const val NOTIFICATION_ID = 1
         private const val TICK_MS = 5_000L
 
-        // Xiaomi 13: punch-hole camera at top-center, ~12dp diameter
-        // Overlay sits to the right of camera hole
-        private const val CAMERA_RIGHT_OFFSET_DP = 22f  // dp right of screen center
-        private const val TEXT_SIZE_SP = 12f
-        private const val Y_OFFSET_DP = 0f  // vertically centered in status bar
+        private const val CAMERA_RIGHT_OFFSET_DP = 22f
+        private const val TEXT_SIZE_SP = 14f
+        private const val Y_OFFSET_DP = 0f
+    }
+
+    // Custom View: white fill + black stroke outline
+    private inner class OutlinedTextView(ctx: Context) : View(ctx) {
+        var displayText: String = "0:00"
+            set(value) {
+                field = value
+                invalidate()
+            }
+
+        private val textSizePx = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_SP, TEXT_SIZE_SP, ctx.resources.displayMetrics
+        )
+
+        private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.BLACK
+            textSize = textSizePx
+            typeface = Typeface.DEFAULT_BOLD
+            style = Paint.Style.STROKE
+            strokeWidth = textSizePx * 0.18f
+        }
+
+        private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            textSize = textSizePx
+            typeface = Typeface.DEFAULT_BOLD
+            style = Paint.Style.FILL
+        }
+
+        override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+            val w = (strokePaint.measureText(displayText) + strokePaint.strokeWidth * 2).toInt()
+            val h = (-fillPaint.ascent() + fillPaint.descent() + strokePaint.strokeWidth * 2).toInt()
+            setMeasuredDimension(w, h)
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            val x = strokePaint.strokeWidth
+            val y = -fillPaint.ascent() + strokePaint.strokeWidth
+            canvas.drawText(displayText, x, y, strokePaint)
+            canvas.drawText(displayText, x, y, fillPaint)
+        }
     }
 
     private lateinit var windowManager: WindowManager
-    private var overlayView: TextView? = null
+    private var timerView: OutlinedTextView? = null
     private val handler = Handler(Looper.getMainLooper())
 
     private var unlockTime = 0L
@@ -64,7 +106,7 @@ class StopwatchService : Service() {
         createNotificationChannel()
         startForeground(NOTIFICATION_ID, buildNotification())
         registerScreenReceiver()
-        createOverlayView()
+        timerView = OutlinedTextView(this)
         Log.d(TAG, "Service created")
     }
 
@@ -78,7 +120,8 @@ class StopwatchService : Service() {
         super.onDestroy()
         unregisterReceiver(screenReceiver)
         handler.removeCallbacks(tickRunnable)
-        removeOverlayView()
+        if (isShowing) hideOverlay()
+        timerView = null
         Log.d(TAG, "Service destroyed")
     }
 
@@ -102,15 +145,6 @@ class StopwatchService : Service() {
 
     // ── Overlay ──────────────────────────────────────────────────────────────
 
-    private fun createOverlayView() {
-        overlayView = TextView(this).apply {
-            text = "0:00"
-            setTextColor(Color.WHITE)
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, TEXT_SIZE_SP)
-            setShadowLayer(3f, 0f, 1f, Color.BLACK)
-        }
-    }
-
     private fun buildOverlayParams(): WindowManager.LayoutParams {
         val metrics = resources.displayMetrics
         val screenWidth = metrics.widthPixels
@@ -119,14 +153,13 @@ class StopwatchService : Service() {
         val offsetPx = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP, CAMERA_RIGHT_OFFSET_DP, metrics
         ).toInt()
-
         val textSizePx = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_SP, TEXT_SIZE_SP, metrics
         ).toInt()
-
         val yOffsetPx = TypedValue.applyDimension(
             TypedValue.COMPLEX_UNIT_DIP, Y_OFFSET_DP, metrics
         ).toInt()
+
         val finalX = screenWidth / 2 + offsetPx
         val finalY = statusBarHeight / 2 - textSizePx / 2 + yOffsetPx
         Log.d(TAG, "Overlay params: x=$finalX y=$finalY statusBar=$statusBarHeight screenWidth=$screenWidth density=${metrics.density}")
@@ -137,7 +170,8 @@ class StopwatchService : Service() {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
@@ -147,9 +181,9 @@ class StopwatchService : Service() {
     }
 
     private fun showOverlay() {
-        if (isShowing || overlayView == null) return
+        if (isShowing || timerView == null) return
         try {
-            windowManager.addView(overlayView, buildOverlayParams())
+            windowManager.addView(timerView, buildOverlayParams())
             isShowing = true
             Log.d(TAG, "Overlay shown")
         } catch (e: Exception) {
@@ -158,19 +192,14 @@ class StopwatchService : Service() {
     }
 
     private fun hideOverlay() {
-        if (!isShowing || overlayView == null) return
+        if (!isShowing || timerView == null) return
         try {
-            windowManager.removeView(overlayView)
+            windowManager.removeView(timerView)
             isShowing = false
             Log.d(TAG, "Overlay hidden")
         } catch (e: Exception) {
             Log.e(TAG, "hideOverlay failed", e)
         }
-    }
-
-    private fun removeOverlayView() {
-        hideOverlay()
-        overlayView = null
     }
 
     private fun updateDisplay() {
@@ -179,7 +208,7 @@ class StopwatchService : Service() {
         val minutes = elapsedSec / 60
         val seconds = elapsedSec % 60
         val text = "%d:%02d".format(minutes, seconds)
-        overlayView?.text = text
+        timerView?.displayText = text
         Log.d(TAG, "Time: $text")
     }
 

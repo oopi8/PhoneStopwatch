@@ -32,7 +32,7 @@ class StopwatchService : Service() {
         // Overlay sits to the right of camera hole
         private const val CAMERA_RIGHT_OFFSET_DP = 22f  // dp right of screen center
         private const val TEXT_SIZE_SP = 12f
-        private const val Y_OFFSET_DP = -30f  // shift upward
+        private const val Y_OFFSET_DP = -130f  // shift upward
     }
 
     private lateinit var windowManager: WindowManager

@@ -124,6 +124,13 @@ class StopwatchService : Service() {
             TypedValue.COMPLEX_UNIT_SP, TEXT_SIZE_SP, metrics
         ).toInt()
 
+        val yOffsetPx = TypedValue.applyDimension(
+            TypedValue.COMPLEX_UNIT_DIP, Y_OFFSET_DP, metrics
+        ).toInt()
+        val finalX = screenWidth / 2 + offsetPx
+        val finalY = statusBarHeight / 2 - textSizePx / 2 + yOffsetPx
+        Log.d(TAG, "Overlay params: x=$finalX y=$finalY statusBar=$statusBarHeight screenWidth=$screenWidth density=${metrics.density}")
+
         return WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
@@ -134,11 +141,8 @@ class StopwatchService : Service() {
             PixelFormat.TRANSLUCENT
         ).apply {
             gravity = Gravity.TOP or Gravity.START
-            x = screenWidth / 2 + offsetPx
-            val yOffsetPx = TypedValue.applyDimension(
-                TypedValue.COMPLEX_UNIT_DIP, Y_OFFSET_DP, metrics
-            ).toInt()
-            y = statusBarHeight / 2 - textSizePx / 2 + yOffsetPx
+            x = finalX
+            y = finalY
         }
     }
 

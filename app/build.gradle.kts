@@ -8,6 +8,15 @@ android {
     namespace = "com.Mitchell.phonestopwatch"
     compileSdk = 34
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("../phonestopwatch.jks")
+            storePassword = "phonestopwatch123"
+            keyAlias = "phonestopwatch"
+            keyPassword = "phonestopwatch123"
+        }
+    }
+
     defaultConfig {
         applicationId = "com.Mitchell.phonestopwatch"
         minSdk = 26
@@ -20,6 +29,7 @@ android {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 

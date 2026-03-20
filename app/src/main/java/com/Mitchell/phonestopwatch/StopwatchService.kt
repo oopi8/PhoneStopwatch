@@ -160,7 +160,7 @@ class StopwatchService : Service() {
         // y=0 is bottom of status bar; use negative value to enter status bar area
         // target: vertically centered in status bar
         val finalX = screenWidth / 2 + offsetPx
-        val finalY = -(statusBarHeight / 2 + textSizePx / 2)
+        val finalY = 500  // test: move down 500px
         Log.d(TAG, "Overlay params: x=$finalX y=$finalY statusBar=$statusBarHeight screenWidth=$screenWidth density=${metrics.density}")
 
         return WindowManager.LayoutParams(
